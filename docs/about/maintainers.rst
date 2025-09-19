@@ -899,6 +899,13 @@ Renesas RZ/G2 platform port
 :|F|: drivers/renesas/rzg
 :|F|: tools/renesas/rzg_layout_create
 
+Renesas RZ/A3 platform port
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+:|M|: Nhut Nguyen <nhut.nguyen.kc@renesas.com>
+:|G|: `nhutnguyenkc`_
+:|F|: docs/plat/rz-a3.rst
+:|F|: plat/renesas/rza
+
 RockChip platform port
 ^^^^^^^^^^^^^^^^^^^^^^
 :|M|: Tony Xie <tony.xie@rock-chips.com>
