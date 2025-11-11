@@ -580,6 +580,13 @@ subsections:
               - title: R-Car 4
                 scope: rcar4
 
+          - title: RZ
+            scope: rz
+
+            subsections:
+              - title: RZ/A
+                scope: rza
+
       - title: Rockchip
         scope: rockchip
 
