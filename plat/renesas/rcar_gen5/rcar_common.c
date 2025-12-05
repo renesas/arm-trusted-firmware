@@ -22,7 +22,7 @@ void rcar_console_boot_init(void)
 	static console_t rcar_boot_console = {0};
 	int ret;
 
-	ret = console_rcar_register(0, 0, 0, &rcar_boot_console);
+	ret = console_scif_register(0, 0, 0, &rcar_boot_console);
 	if (ret == 0) {
 		panic();
 	}
@@ -35,7 +35,7 @@ void rcar_console_runtime_init(void)
 	static console_t rcar_runtime_console = {0};
 	int ret;
 
-	ret = console_rcar_register(1, 0, 0, &rcar_runtime_console);
+	ret = console_scif_register(1, 0, 0, &rcar_runtime_console);
 	if (ret == 0) {
 		panic();
 	}

@@ -60,7 +60,7 @@
 #define MODEMR_HSCIF_DLMODE_1843200	2U
 #define MODEMR_HSCIF_DLMODE_3000000	3U
 
-int console_rcar_init(uintptr_t base_addr, uint32_t uart_clk,
+int console_scif_init(uintptr_t base_addr, uint32_t uart_clk,
 		      uint32_t baud_rate)
 {
 	uint32_t modemr, mstpcr, mstpsr, mstpbit;

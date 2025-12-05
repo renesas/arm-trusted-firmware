@@ -7,18 +7,17 @@
 #include <arch.h>
 #include <asm_macros.S>
 #include <console_macros.S>
-#include <drivers/renesas/rcar/console/console.h>
 
-	.globl	console_rcar_register
-	.globl	console_rcar_init
-	.globl	console_rcar_putc
-	.globl	console_rcar_flush
+	.globl	console_scif_register
+	.globl	console_scif_init
+	.globl	console_scif_putc
+	.globl	console_scif_flush
 
 	.extern	rcar_log_init
 	.extern	rcar_set_log_data
 
 	/* -----------------------------------------------
-	 * int console_rcar_register(
+	 * int console_scif_register(
 	 *      uintptr_t base, uint32_t clk, uint32_t baud,
 	 *      console_t *console)
 	 * Function to initialize and register a new rcar
@@ -32,7 +31,7 @@
 	 * Clobber list : x0, x1, x2, x6, x7, x14
 	 * -----------------------------------------------
 	 */
-func console_rcar_register
+func console_scif_register
 	mov	x7, x30
 	mov	x6, x3
 	cbz	x6, register_fail
@@ -43,14 +42,14 @@ func console_rcar_register
 
 	mov	x0, x6
 	mov	x30, x7
-	finish_console_register rcar, putc=1, getc=0, flush=1
+	finish_console_register scif, putc=1, getc=0, flush=1
 
 register_fail:
 	ret	x7
-endfunc console_rcar_register
+endfunc console_scif_register
 
 	/* ---------------------------------------------
-	 * int console_rcar_init(unsigned long base_addr,
+	 * int console_scif_init(unsigned long base_addr,
 	 * unsigned int uart_clk, unsigned int baud_rate)
 	 * Function to initialize the console without a
 	 * C Runtime to print debug information. This
@@ -62,13 +61,13 @@ endfunc console_rcar_register
 	 * Clobber list : x1, x2
 	 * ---------------------------------------------
 	 */
-func console_rcar_init
+func console_scif_init
 	mov	w0, #1
 	ret
-endfunc console_rcar_init
+endfunc console_scif_init
 
 	/* --------------------------------------------------------
-	 * int console_rcar_putc(int c, console_t *console)
+	 * int console_scif_putc(int c, console_t *console)
 	 * Function to output a character over the console. It
 	 * returns the character printed on success or -1 on error.
 	 * In : w0 - character to be printed
@@ -77,17 +76,17 @@ endfunc console_rcar_init
 	 * Clobber list : x2
 	 * --------------------------------------------------------
 	 */
-func console_rcar_putc
+func console_scif_putc
 	b	rcar_set_log_data
-endfunc console_rcar_putc
+endfunc console_scif_putc
 
 	/* ---------------------------------------------
-	 * void console_rcar_flush(void)
+	 * void console_scif_flush(void)
 	 * Function to force a write of all buffered
 	 * data that hasn't been output. It returns void
 	 * Clobber list : x0, x1
 	 * ---------------------------------------------
 	 */
-func console_rcar_flush
+func console_scif_flush
 	ret
-endfunc console_rcar_flush
+endfunc console_scif_flush

@@ -27,9 +27,9 @@
 	.globl	plat_renesas_calc_core_pos
 	.globl	bl31_plat_enable_mmu
 
-	.extern console_rcar_init
-	.extern console_rcar_putc
-	.extern console_rcar_flush
+	.extern console_scif_init
+	.extern console_scif_putc
+	.extern console_scif_flush
 	.extern rcar_pwrc_code_copy_to_system_ram
 
 	/* -----------------------------------------------------
@@ -176,7 +176,7 @@ func plat_crash_console_init
 	mov	sp, x2
 	str	x1, [sp, #-16]!
 	str	x30, [sp, #-16]!
-	bl	console_rcar_init
+	bl	console_scif_init
 	ldr	x30, [sp], #16
 	ldr	x1, [sp], #16
 	mov	sp, x1
@@ -199,7 +199,7 @@ func plat_crash_console_putc
 	str	x5, [sp, #-16]!
 	str	x6, [sp, #-16]!
 	str	x7, [sp, #-16]!
-	bl	console_rcar_putc
+	bl	console_scif_putc
 	ldr	x7, [sp], #16
 	ldr	x6, [sp], #16
 	ldr	x5, [sp], #16
@@ -216,7 +216,7 @@ endfunc plat_crash_console_putc
 	 * ---------------------------------------------
 	 */
 func plat_crash_console_flush
-	b	console_rcar_flush
+	b	console_scif_flush
 endfunc plat_crash_console_flush
 
 	/* ---------------------------------------------
