@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019-2021, Renesas Electronics Corporation. All rights reserved.
+ * Copyright (c) 2019-2025, Renesas Electronics Corporation. All rights reserved.
  *
  * SPDX-License-Identifier: BSD-3-Clause
  */
@@ -13,6 +13,8 @@
 
 #include <lib/mmio.h>
 #include <cpg_registers.h>
+#include <rcar_def.h>
+#include <rcar_private.h>
 
 #define MSTP318			(1 << 18)
 #define MSTP319			(1 << 19)
@@ -21,6 +23,26 @@
 #define PMSR_PMEL1RX		(1 << 23)
 #define PMCTLR			0x60
 #define PMSR_L1IATN		(1U << 31)
+
+/* scif */
+#define SCIF0_BASE		0xE6E60000
+#define SCIF2_BASE		0xE6E88000
+
+#define PRR_PRODUCT_H3_VER_10	0x00004F00
+#define MODEMR_MD12		0x00001000
+
+/* module stop */
+#if RCAR_LSI == RCAR_V3M
+#define SCIF_BASE		SCIF0_BASE
+#define CPG_SMSTPCR		CPG_SMSTPCR2
+#define CPG_MSTPSR		CPG_MSTPSR2
+#define MSTP			BIT(7)
+#else
+#define SCIF_BASE		SCIF2_BASE
+#define CPG_SMSTPCR		CPG_SMSTPCR3
+#define CPG_MSTPSR		CPG_MSTPSR3
+#define MSTP			BIT(10)
+#endif
 
 static int rcar_pcie_fixup(unsigned int controller)
 {
@@ -68,11 +90,53 @@ void plat_ea_handler(unsigned int ea_reason, uint64_t syndrome, void *cookie,
 static console_t rcar_boot_console;
 static console_t rcar_runtime_console;
 
+static int rcar_scif_get_clock(void)
+{
+	uint32_t prr = mmio_read_32(PRR);
+
+	/* Obtain the SCIF clock from R-Car Gen3 Reference manual v2.40 Figure 8.1 */
+	switch (prr & PRR_PRODUCT_MASK) {
+	case PRR_PRODUCT_H3:
+	case PRR_PRODUCT_M3:
+	case PRR_PRODUCT_V3H:
+		return 66660000;
+	case PRR_PRODUCT_V3M:
+		return 100000000;
+	case PRR_PRODUCT_E3:
+	case PRR_PRODUCT_D3:
+		if (mmio_read_32(RST_MODEMR) & MODEMR_MD12)
+			return 60000000;
+		return 66660000;
+	default:
+		return -1;
+	}
+}
+
 void rcar_console_boot_init(void)
 {
 	int ret;
+	int clock;
+	int baud;
 
-	ret = console_scif_register(0, 0, 0, &rcar_boot_console);
+	/* Enable SCIF clock */
+	mstpcr_write(CPG_SMSTPCR, CPG_MSTPSR, MSTP);
+
+	/* Get SCIF clock frequency */
+	clock = rcar_scif_get_clock();
+
+	if (clock < 0)
+		panic();
+
+	/* Baud rate */
+	uint32_t prr = mmio_read_32(PRR);
+
+	if ((prr & (PRR_PRODUCT_MASK | PRR_CUT_MASK)) == PRR_PRODUCT_H3_VER_10) {
+		baud = 230400;
+	} else {
+		baud = 115200;
+	}
+
+	ret = console_scif_register(SCIF_BASE, clock, baud, &rcar_boot_console);
 	if (!ret)
 		panic();
 
@@ -86,8 +150,28 @@ void rcar_console_boot_end(void)
 void rcar_console_runtime_init(void)
 {
 	int ret;
+	int clock;
+	int baud;
 
-	ret = console_scif_register(1, 0, 0, &rcar_runtime_console);
+	/* Enable SCIF clock */
+	mstpcr_write(CPG_SMSTPCR, CPG_MSTPSR, MSTP);
+
+	/* Get SCIF clock frequency */
+	clock = rcar_scif_get_clock();
+
+	if (clock < 0)
+		panic();
+
+	/* Baud rate */
+	uint32_t prr = mmio_read_32(PRR);
+
+	if ((prr & (PRR_PRODUCT_MASK | PRR_CUT_MASK)) == PRR_PRODUCT_H3_VER_10) {
+		baud = 230400;
+	} else {
+		baud = 115200;
+	}
+
+	ret = console_scif_register(SCIF_BASE, clock, baud, &rcar_runtime_console);
 	if (!ret)
 		panic();
 

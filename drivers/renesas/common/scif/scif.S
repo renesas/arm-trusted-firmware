@@ -14,21 +14,8 @@
 #define SCIF_EXTARNAL_CLK	1
 #define SCIF_CLK		SCIF_INTERNAL_CLK
 
-#define PRR_PRODUCT_H3_VER_10	(0x00004F00)
-
-/* module stop */
-#define CPG_BASE		(0xE6150000)
-#define CPG_SMSTPCR2		(0x0138)
-#define CPG_SMSTPCR3		(0x013C)
-#define CPG_MSTPSR2		(0x0040)
-#define CPG_MSTPSR3		(0x0048)
-#define MSTP207			(1 << 7)
-#define MSTP310			(1 << 10)
-#define CPG_CPGWPR		(0x0900)
-
 /* scif */
-#define SCIF0_BASE		(0xE6E60000)
-#define SCIF2_BASE		(0xE6E88000)
+#ifdef RCAR_LSI
 #define SCIF_SCSMR		(0x00)
 #define SCIF_SCBRR		(0x04)
 #define SCIF_SCSCR		(0x08)
@@ -41,21 +28,24 @@
 #define SCIF_SCLSR		(0x24)
 #define SCIF_DL			(0x30)
 #define SCIF_CKS		(0x34)
-
-#if RCAR_LSI == RCAR_V3M
-#define SCIF_BASE		SCIF0_BASE
-#define CPG_SMSTPCR		CPG_SMSTPCR2
-#define CPG_MSTPSR		CPG_MSTPSR2
-#define MSTP			MSTP207
-#else
-#define SCIF_BASE		SCIF2_BASE
-#define CPG_SMSTPCR		CPG_SMSTPCR3
-#define CPG_MSTPSR		CPG_MSTPSR3
-#define MSTP			MSTP310
-#endif
-
-/* mode pin */
-#define MODEMR_MD12		(0x00001000)
+#else /* RCAR_LSI */
+#define SCIF_SCSMR		(0x00)
+#define SCIF_SCBRR		(0x02)
+#define SCIF_SCMDDR		(0x02)
+#define SCIF_SCSCR		(0x04)
+#define SCIF_SCFTDR		(0x06)
+#define SCIF_SCFSR		(0x08)
+#define SCIF_SCFRDR		(0x0A)
+#define SCIF_SCFCR		(0x0C)
+#define SCIF_SCFDR		(0x0E)
+#define SCIF_SCSPTR		(0x10)
+#define SCIF_SCLSR		(0x12)
+#define SCIF_SEMR		(0x14)
+#define SCIF_FTCR		(0x16)
+#define SEMR_MDDRS_MDDR 	(0x10)
+#define SEMR_BRME_ON		(0x20)
+#define SEMR_MDDR		(SEMR_MDDRS_MDDR | SEMR_BRME_ON)
+#endif /* RCAR_LSI */
 
 #define SCSMR_CA_MASK		(1 << 7)
 #define SCSMR_CA_ASYNC		(0x0000)
@@ -72,10 +62,6 @@
 					 SCSMR_PE_DIS +		\
 					 SCSMR_STOP_1 +		\
 					 SCSMR_CKS_DIV1)
-#define SCBRR_115200BPS		(17)
-#define SCBRR_115200BPS_D3_SSCG	(16)
-#define SCBRR_115200BPS_E3_SSCG	(15)
-#define SCBRR_230400BPS		(8)
 
 #define SCSCR_TE_MASK		(1 << 5)
 #define SCSCR_TE_DIS		(0x0000)
@@ -127,94 +113,50 @@
 	 *     w1 - Uart clock in Hz
 	 *     w2 - Baud rate
 	 * Out: return 1 on success
-	 * Clobber list : x1, x2
+	 * Clobber list : x1, x2, x3, x4
 	 */
 func console_scif_init
-	ldr	x0, =CPG_BASE
-	ldr	w1, [x0, #CPG_SMSTPCR]
-	and	w1, w1, #~MSTP
-	mvn	w2, w1
-	str	w2, [x0, #CPG_CPGWPR]
-	str	w1, [x0, #CPG_SMSTPCR]
-5:
-	ldr w1, [x0, #CPG_MSTPSR]
-	and w1, w1, #MSTP
-	cbnz w1, 5b
-
-	ldr	x0, =SCIF_BASE
 	/* Clear bits TE and RE in SCSCR to 0 */
-	mov	w1, #(SCSCR_TE_DIS + SCSCR_RE_DIS)
-	strh	w1, [x0, #SCIF_SCSCR]
+	mov	w3, #(SCSCR_TE_DIS + SCSCR_RE_DIS)
+	strh	w3, [x0, #SCIF_SCSCR]
 	/* Set bits TFRST and RFRST in SCFCR to 1 */
-	ldrh	w1, [x0, #SCIF_SCFCR]
-	orr	w1, w1, #(SCFCR_TFRST_EN + SCFCR_RFRS_EN)
-	strh	w1, [x0, #SCIF_SCFCR]
+	ldrh	w3, [x0, #SCIF_SCFCR]
+	orr	w3, w3, #(SCFCR_TFRST_EN + SCFCR_RFRS_EN)
+	strh	w3, [x0, #SCIF_SCFCR]
 	/*
 	 * Read flags of ER, DR, BRK, and RDF in SCFSR and those of TO and ORER
 	 * in SCLSR, then clear them to 0
 	 */
-	mov	w1, #SCFSR_INIT_DATA
-	strh	w1, [x0, #SCIF_SCFSR]
-	mov	w1, #0
-	strh	w1, [x0, #SCIF_SCLSR]
+	mov	w3, #SCFSR_INIT_DATA
+	strh	w3, [x0, #SCIF_SCFSR]
+	mov	w3, #0
+	strh	w3, [x0, #SCIF_SCLSR]
 	/* Set bits CKE[1:0] in SCSCR */
-	ldrh	w1, [x0, #SCIF_SCSCR]
-	and	w1, w1, #~SCSCR_CKE_MASK
-	mov	w2, #SCSCR_CKE_INT_CLK
-	orr	w1, w1, w2
-	strh	w1, [x0, #SCIF_SCSCR]
+	ldrh	w3, [x0, #SCIF_SCSCR]
+	and	w3, w3, #~SCSCR_CKE_MASK
+	mov	w4, #SCSCR_CKE_INT_CLK
+	orr	w3, w3, w4
+	strh	w3, [x0, #SCIF_SCSCR]
 	/* Set data transfer format in SCSMR */
-	mov	w1, #SCSMR_INIT_DATA
-	strh	w1, [x0, #SCIF_SCSMR]
+	mov	w3, #SCSMR_INIT_DATA
+	strh	w3, [x0, #SCIF_SCSMR]
 	/* Set value in SCBRR */
 #if SCIF_CLK == SCIF_INTERNAL_CLK
-	ldr	x1, =PRR
-	ldr	w1, [x1]
-	and	w1, w1, #(PRR_PRODUCT_MASK | PRR_CUT_MASK)
-	mov	w2, #PRR_PRODUCT_H3_VER_10
-	cmp	w1, w2
-	beq	3f
-	and	w1, w1, #PRR_PRODUCT_MASK
-	mov	w2, #PRR_PRODUCT_D3
-	cmp	w1, w2
-	beq	5f
-	and	w1, w1, #PRR_PRODUCT_MASK
-	mov	w2, #PRR_PRODUCT_E3
-	cmp	w1, w2
-	bne	4f
-
-	/* When SSCG(MD12) on (E3) */
-	ldr	x1, =RST_MODEMR
-	ldr	w1, [x1]
-	and	w1, w1, #MODEMR_MD12
-	mov	w2, #MODEMR_MD12
-	cmp	w1, w2
-	bne	4f
-
-	/* When SSCG(MD12) on (E3) */
-	mov	w1, #SCBRR_115200BPS_E3_SSCG
-	b	2f
-5:
-	/* In case of D3 */
-	ldr	x1, =RST_MODEMR
-	ldr	w1, [x1]
-	and	w1, w1, #MODEMR_MD12
-	mov	w2, #MODEMR_MD12
-	cmp	w1, w2
-	bne	4f
-
-	/* When SSCG(MD12) on (D3) */
-	mov	w1, #SCBRR_115200BPS_D3_SSCG
-	b	2f
-4:
-	/* In case of H3/M3/M3N or when SSCG(MD12) is off in E3/D3 */
-	mov	w1, #SCBRR_115200BPS
-	b	2f
-3:
-	mov	w1, #SCBRR_230400BPS
-2:
-	strb	w1, [x0, SCIF_SCBRR]
-#else
+	udiv	w3, w1, w2	/* w3 = uart clock in Hz / baud rate */
+	lsr	w3, w3, #5	/* w3 = w3 / 32 */
+	sub	w3, w3, #1	/* w3 -= 1 */
+	strb	w3, [x0, #SCIF_SCBRR]
+#if RZA3
+	/* Set value in MDDR and SEMR */
+	add	x3, x3, #1	/* brr += 1 */
+	lsl	x3, x3, #13	/* brr = brr * 8192 */
+	mul	x3, x3, x2	/* brr = brr * baud rate */
+	udiv	x3, x3, x1	/* mddr = brr / uart clock in Hz */
+	mov	w1, #(SEMR_MDDR)
+	strb	w1, [x0, #SCIF_SEMR]
+	strb	w3, [x0, #SCIF_SCMDDR]
+#endif /* RZA3 */
+#else /* SCIF_CLK == SCIF_INTERNAL_CLK */
 	mov	w1, #DL_INIT_DATA
 	strh	w1, [x0, #SCIF_DL]
 	mov	w1, #CKS_INIT_DATA
@@ -250,7 +192,7 @@ endfunc console_scif_init
 	 * Clobber list : x2
 	 */
 func console_scif_putc
-	ldr	x1, =SCIF_BASE
+	ldr	x1, [x1, #CONSOLE_T_BASE]
 	cmp	w0, #0xA
 	/* Prepend '\r' to '\n' */
 	bne	2f
@@ -285,7 +227,7 @@ endfunc console_scif_putc
 	 * Clobber list : x0, x1
 	 */
 func console_scif_flush
-	ldr	x0, =SCIF_BASE
+	ldr	x0, [x0, #CONSOLE_T_BASE]
 1:
 	/* Check TEND flag */
 	ldrh	w1, [x0, #SCIF_SCFSR]
@@ -293,7 +235,6 @@ func console_scif_flush
 	cmp	w1, #SCFSR_TEND_TRANS_END
 	bne	1b
 
-	ldr	x0, =SCIF_BASE
 	ldrh	w1, [x0, #SCIF_SCSCR]
 	and	w1, w1, #~(SCSCR_TE_EN + SCSCR_RE_EN)
 	strh	w1, [x0, #SCIF_SCSCR]
